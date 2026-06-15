@@ -4,14 +4,37 @@
 #include <time.h>
 #include <unistd.h>
 #include <string.h>
+#include <sys/ioctl.h>
+#include <signal.h>
 #include <termios.h>
 
 struct termios og_terminal;
+int resize_flag;
 
 void disable_raw_mode(){
 
 	tcsetattr(STDIN_FILENO, TCSAFLUSH, &og_terminal);
 }
+
+void get_winsize(int* cols, int* rows){
+
+	struct winsize w;
+	ioctl(0, TIOCGWINSZ, &w);
+	
+	*cols = w.ws_col;
+	*rows = w.ws_row;
+
+	resize_flag = 0;
+}
+
+void winch_handle(int sig){
+
+	if(sig == SIGWINCH){
+
+		resize_flag = 1;
+	}
+}
+
 
 void enable_raw_mode(){
 
@@ -104,15 +127,27 @@ int main(int argc, char* argv[]){
 	char* text = parse_file(filename, &bsize, &word_count);
 
 	printf("\033[2J\033[H");
+
+	int cols;
+	int rows;
+
+	get_winsize(&cols, &rows);
 	enable_raw_mode();
 
 	struct timespec start, end;
-
 
 	int i = 0;
 	int c;
 
 	do{
+
+		signal(SIGWINCH, winch_handle);
+
+		if(resize_flag == 1){
+
+			get_winsize(&cols, &rows);
+		}
+
 		c = 0;
 		printf("%s\n\033[H", text + i);
 		fflush(stdout);
