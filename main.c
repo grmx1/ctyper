@@ -1,5 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <ctype.h>
+#include <time.h>
 #include <unistd.h>
 #include <string.h>
 #include <termios.h>
@@ -23,10 +25,12 @@ void enable_raw_mode(){
 	tcsetattr(STDIN_FILENO, TCSAFLUSH, &terminal);
 }
 
-char* parse_file(char* filename, size_t* bsize){
+char* parse_file(char* filename, size_t* bsize, int* wcount){
 
 	int c;
 	int bufsize = 100;
+	int word_count = 0;
+	int in_word = 0;
 
 	char* buffer = malloc(bufsize);
 
@@ -42,6 +46,16 @@ char* parse_file(char* filename, size_t* bsize){
 
 	int counter = 0;
 	while((c = fgetc(file)) != EOF){
+
+		if(in_word == 0 && isalpha(c)){
+
+			in_word = 1;
+			word_count++;
+		}
+		else if(in_word > 0 && (c == ' ' || c == '\n')){
+
+			in_word = 0;
+		}
 
 		if(counter + 10 >= bufsize){
 
@@ -67,6 +81,7 @@ char* parse_file(char* filename, size_t* bsize){
 	fclose(file);
 
 	*bsize = counter;
+	*wcount = word_count;
 
 	return buffer;
 
@@ -83,11 +98,16 @@ int main(int argc, char* argv[]){
 
 	char* filename = argv[1];
 
-	size_t tsize;
-	char* text = parse_file(filename, &tsize);
+	size_t bsize;
+	int word_count;
+
+	char* text = parse_file(filename, &bsize, &word_count);
 
 	printf("\033[2J\033[H");
 	enable_raw_mode();
+
+	struct timespec start, end;
+
 
 	int i = 0;
 	int c;
@@ -98,6 +118,12 @@ int main(int argc, char* argv[]){
 		fflush(stdout);
 		read(STDIN_FILENO, &c, 1);
 
+		if(i == 0){
+
+
+			clock_gettime(CLOCK_MONOTONIC, &start);
+		}
+
 		if(c == text[i]){
 
 			i++;
@@ -105,9 +131,15 @@ int main(int argc, char* argv[]){
 
 		printf("\033[2J\033[H");
 
-	}while(i + 1 < tsize);
+	}while(i + 1 < bsize);
 
-	printf("DONE\n");
+	clock_gettime(CLOCK_MONOTONIC, &end);
 
+	double time_taken = (end.tv_sec - start.tv_sec) + (end.tv_nsec - start.tv_nsec) / 1e9;
+	double wpm = (bsize / 5) / (time_taken / 60.00);
+
+
+	printf("Time: %fs\n", time_taken);
+	printf("WPM = %f\n", wpm);
 
 }
