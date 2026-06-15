@@ -110,6 +110,28 @@ char* parse_file(char* filename, size_t* bsize, int* wcount){
 
 }
 
+void display_text(char* text, size_t bsize, int idx, int cols, int rows){
+
+	//can optimize this here to not send the print statement on every iteration
+	for(int i = 0; i < bsize; i++){
+
+		if(i < idx){
+
+			printf("\033[32m");
+			fflush(stdout);
+		}
+		else if(i == idx){
+
+			printf("\033[30;47m");
+			fflush(stdout);
+		}
+
+		putchar(text[i]);
+		printf("\033[0m");
+		fflush(stdout);
+	}
+}
+
 int main(int argc, char* argv[]){
 
 
@@ -126,7 +148,7 @@ int main(int argc, char* argv[]){
 
 	char* text = parse_file(filename, &bsize, &word_count);
 
-	printf("\033[2J\033[H");
+	printf("\033[2J\033[H\033[?25l");
 
 	int cols;
 	int rows;
@@ -148,9 +170,11 @@ int main(int argc, char* argv[]){
 			get_winsize(&cols, &rows);
 		}
 
+		display_text(text, bsize, i, cols, rows);
+		//printf("%s\n\033[H", text + i);
+
 		c = 0;
-		printf("%s\n\033[H", text + i);
-		fflush(stdout);
+
 		read(STDIN_FILENO, &c, 1);
 
 		if(i == 0){
@@ -176,5 +200,8 @@ int main(int argc, char* argv[]){
 
 	printf("Time: %fs\n", time_taken);
 	printf("WPM = %f\n", wpm);
+
+	printf("\033[?25h");
+
 
 }
