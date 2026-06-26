@@ -19,9 +19,10 @@ char* parse_file(char* filename, size_t* bsize){
 	}
 
 	int counter = 0;
+
 	while((c = fgetc(file)) != EOF){
 
-		if(counter + 10 >= bufsize){
+		if(counter == bufsize - 1){
 
 			bufsize *= 2;
 			char* temp_buffer = realloc(buffer, bufsize);
@@ -41,7 +42,7 @@ char* parse_file(char* filename, size_t* bsize){
 		counter++;
 	}
 
-	buffer[counter + 1] = '\0';
+	buffer[counter] = '\0';
 	fclose(file);
 
 	*bsize = counter;
